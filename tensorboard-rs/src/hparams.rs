@@ -55,6 +55,11 @@ pub struct HyperParameter {
 }
 
 impl HyperParameter {
+    
+    pub fn as_kv(&self) -> (String,GenericValue) {
+        (self.name.clone(),self.value.clone())
+    } 
+    
     pub fn with_values(name: &str, values: Vec<GenericValue>) -> Self {
         HyperParameter {
             name: name.to_string(),
