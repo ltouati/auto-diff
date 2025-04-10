@@ -1,5 +1,6 @@
 #![allow(clippy::too_many_arguments)]
 
+use std::io::Cursor;
 use protobuf::RepeatedField;
 use tensorboard_proto::layout::{Category, Layout};
 use tensorboard_proto::summary::{
@@ -7,7 +8,7 @@ use tensorboard_proto::summary::{
     Summary_Value,
 };
 
-use image::{DynamicImage, ImageOutputFormat, RgbImage};
+use image::{DynamicImage, ImageFormat, RgbImage};
 
 pub fn scalar(name: &str, scalar_value: f32) -> Summary {
     let mut value = Summary_Value::new();
@@ -66,15 +67,16 @@ pub fn image(tag: &str, data: &[u8], dim: &[usize]) -> Summary {
     let mut img = RgbImage::new(dim[1] as u32, dim[2] as u32);
     img.clone_from_slice(data);
     let dimg = DynamicImage::ImageRgb8(img);
-    let mut output_buf = Vec::<u8>::new();
-    dimg.write_to(&mut output_buf, ImageOutputFormat::Png)
+    let output_buf = Vec::<u8>::new();
+    let mut c = Cursor::new(output_buf);
+    dimg.write_to(&mut c, ImageFormat::Png)
         .expect("");
 
     let mut output_image = Summary_Image::new();
     output_image.set_height(dim[1] as i32);
     output_image.set_width(dim[2] as i32);
     output_image.set_colorspace(3);
-    output_image.set_encoded_image_string(output_buf);
+    output_image.set_encoded_image_string(c.into_inner());
     let mut value = Summary_Value::new();
     value.set_tag(tag.to_string());
     value.set_image(output_image);
