@@ -1,12 +1,15 @@
 #![allow(clippy::too_many_arguments)]
-use tensorboard_proto::summary::{Summary, Summary_Value, Summary_Image, SummaryMetadata, SummaryMetadata_PluginData, HistogramProto};
-use tensorboard_proto::layout::{Layout, Category};
-use protobuf::RepeatedField;
 
-use image::{RgbImage, DynamicImage, ImageOutputFormat};
+use protobuf::RepeatedField;
+use tensorboard_proto::layout::{Category, Layout};
+use tensorboard_proto::summary::{
+    HistogramProto, Summary, SummaryMetadata, SummaryMetadata_PluginData, Summary_Image,
+    Summary_Value,
+};
+
+use image::{DynamicImage, ImageOutputFormat, RgbImage};
 
 pub fn scalar(name: &str, scalar_value: f32) -> Summary {
-
     let mut value = Summary_Value::new();
     value.set_tag(name.to_string());
     value.set_simple_value(scalar_value);
@@ -18,12 +21,15 @@ pub fn scalar(name: &str, scalar_value: f32) -> Summary {
     summary
 }
 
-pub fn histogram_raw(name: &str,
-                     min: f64, max: f64,
-                     num: f64,
-                     sum: f64, sum_squares: f64,
-                     bucket_limits: &[f64],
-                     bucket_counts: &[f64],
+pub fn histogram_raw(
+    name: &str,
+    min: f64,
+    max: f64,
+    num: f64,
+    sum: f64,
+    sum_squares: f64,
+    bucket_limits: &[f64],
+    bucket_counts: &[f64],
 ) -> Summary {
     let mut hist = HistogramProto::new();
     hist.set_min(min);
@@ -33,7 +39,7 @@ pub fn histogram_raw(name: &str,
     hist.set_sum_squares(sum_squares);
     hist.set_bucket_limit(bucket_limits.to_vec());
     hist.set_bucket(bucket_counts.to_vec());
-    
+
     let mut value = Summary_Value::new();
     value.set_tag(name.to_string());
     value.set_histo(hist);
@@ -53,15 +59,16 @@ pub fn image(tag: &str, data: &[u8], dim: &[usize]) -> Summary {
     if dim[0] != 3 {
         panic!("needs rgb");
     }
-    if data.len() != dim[0]*dim[1]*dim[2] {
+    if data.len() != dim[0] * dim[1] * dim[2] {
         panic!("length of data should matches with dim.");
     }
-    
+
     let mut img = RgbImage::new(dim[1] as u32, dim[2] as u32);
     img.clone_from_slice(data);
     let dimg = DynamicImage::ImageRgb8(img);
     let mut output_buf = Vec::<u8>::new();
-    dimg.write_to(&mut output_buf, ImageOutputFormat::Png).expect("");
+    dimg.write_to(&mut output_buf, ImageOutputFormat::Png)
+        .expect("");
 
     let mut output_image = Summary_Image::new();
     output_image.set_height(dim[1] as i32);
@@ -88,6 +95,4 @@ pub fn custom_scalars(_layout: f32) {
     plugin_data.set_plugin_name("custom_scalars".to_string());
     let mut smd = SummaryMetadata::new();
     smd.set_plugin_data(plugin_data);
-
-    
 }

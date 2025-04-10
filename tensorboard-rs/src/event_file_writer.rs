@@ -1,15 +1,15 @@
-use std::path::{PathBuf, Path};
-use std::fs;
-use std::time::SystemTime;
 use gethostname::gethostname;
-use std::process::id;
-use std::fs::File;
 use protobuf::Message;
-use std::thread::{spawn, JoinHandle};
+use std::fs;
+use std::fs::File;
+use std::path::{Path, PathBuf};
+use std::process::id;
 use std::sync::mpsc::{channel, Sender};
+use std::thread::{spawn, JoinHandle};
+use std::time::SystemTime;
 
-use tensorboard_proto::event::Event;
 use crate::record_writer::RecordWriter;
+use tensorboard_proto::event::Event;
 
 enum EventSignal {
     Data(Vec<u8>),
@@ -37,8 +37,11 @@ impl EventFileWriter {
         }
         let hostname = gethostname().into_string().expect("");
         let pid = id();
-        
-        let file_name = format!("events.out.tfevents.{:010}.{}.{}.{}", time, hostname, pid, 0);
+
+        let file_name = format!(
+            "events.out.tfevents.{:010}.{}.{}.{}",
+            time, hostname, pid, 0
+        );
         //let file_writer = File::create(logdir.join(file_name)).expect("");
         //let writer = RecordWriter::new(file_writer);
 
@@ -47,20 +50,24 @@ impl EventFileWriter {
         let child = spawn(move || {
             let file_writer = File::create(logdir_move.join(file_name)).expect("");
             let mut writer = RecordWriter::new(file_writer);
-            
+
             loop {
                 let result: EventSignal = rx.recv().unwrap();
                 match result {
                     EventSignal::Data(d) => {
                         writer.write(&d).expect("write error");
-                    },
-                    EventSignal::Flush => {writer.flush().expect("flush error");},
-                    EventSignal::Stop => {break;},
+                    }
+                    EventSignal::Flush => {
+                        writer.flush().expect("flush error");
+                    }
+                    EventSignal::Stop => {
+                        break;
+                    }
                 }
-            };
+            }
             writer.flush().expect("flush error");
         });
-        
+
         let mut ret = EventFileWriter {
             logdir,
             writer: tx,
@@ -81,13 +88,13 @@ impl EventFileWriter {
     pub fn get_logdir(&self) -> PathBuf {
         self.logdir.to_path_buf()
     }
-    
+
     pub fn add_event(&mut self, event: &Event) {
         let mut data: Vec<u8> = Vec::new();
         event.write_to_vec(&mut data).expect("");
         self.writer.send(EventSignal::Data(data)).expect("");
     }
-    
+
     pub fn flush(&mut self) {
         self.writer.send(EventSignal::Flush).expect("");
     }
